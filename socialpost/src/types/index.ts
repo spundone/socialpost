@@ -1,5 +1,7 @@
+export type SocialMediaPlatform = 'twitter' | 'linkedin' | 'instagram';
+
 export interface SocialMediaAccount {
-  platform: 'twitter' | 'linkedin' | 'instagram';
+  platform: SocialMediaPlatform;
   username: string;
 }
 
@@ -7,11 +9,11 @@ export interface PostContent {
   image: File | null;
   caption: string;
   accounts: SocialMediaAccount[];
-  referencePost?: string;
+  referencePost: string;
 }
 
 export interface FormattedPost {
-  platform: 'twitter' | 'linkedin' | 'instagram';
+  platform: SocialMediaPlatform;
   content: string;
-  image: File | null;
+  username: string;
 } 
