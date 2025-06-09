@@ -1,7 +1,25 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-// Initialize Gemini AI
-const genAI = new GoogleGenerativeAI(process.env.REACT_APP_GEMINI_API_KEY || '');
+const API_KEY = process.env.REACT_APP_GEMINI_API_KEY || '';
+const genAI = new GoogleGenerativeAI(API_KEY);
+
+const PLATFORM_GUIDELINES = {
+  twitter: {
+    maxLength: 280,
+    style: 'concise, engaging, and conversational',
+    features: ['hashtags', 'mentions', 'thread support']
+  },
+  linkedin: {
+    maxLength: 3000,
+    style: 'professional, informative, and thought-provoking',
+    features: ['industry insights', 'professional hashtags', 'call-to-action']
+  },
+  instagram: {
+    maxLength: 2200,
+    style: 'visual, engaging, and personal',
+    features: ['emojis', 'relevant hashtags', 'storytelling']
+  }
+};
 
 interface GeminiResponse {
   text: string;
@@ -9,77 +27,74 @@ interface GeminiResponse {
 }
 
 export const geminiService = {
-  async generatePost(content: string, platform: 'twitter' | 'linkedin' | 'instagram'): Promise<GeminiResponse> {
+  async generatePost(content: string, platform: 'twitter' | 'linkedin' | 'instagram', model: string = 'gemini-1.5-flash') {
     try {
-      const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
-
-      const prompt = `Format the following content for ${platform}:
+      const modelInstance = genAI.getGenerativeModel({ model });
+      const guidelines = PLATFORM_GUIDELINES[platform];
       
+      const prompt = `You are a social media expert. Format this content for ${platform}:
+
 Content: ${content}
 
-Please format it appropriately for ${platform} with the following guidelines:
-${platform === 'twitter' ? '- Split into a thread if needed (max 280 chars per tweet)\n- Add thread numbering (1/n)\n- Keep it concise and engaging' : 
-platform === 'linkedin' ? '- Professional tone\n- Include relevant hashtags\n- Format for readability' :
-'- Engaging and visual language\n- Include relevant emojis\n- Format for Instagram\'s style'}
+Guidelines:
+- Style: ${guidelines.style}
+- Maximum length: ${guidelines.maxLength} characters
+- Include: ${guidelines.features.join(', ')}
+${platform === 'twitter' ? '- Split into a thread if needed (max 280 chars per tweet)\n- Add thread numbering (1/n)' : ''}
 
-Format the content and return only the formatted text.`;
+Format the content appropriately for ${platform} while maintaining the original message and tone.`;
 
-      const result = await model.generateContent(prompt);
+      const result = await modelInstance.generateContent(prompt);
       const response = await result.response;
       const text = response.text();
-
-      return { text };
+      
+      return { text, error: null };
     } catch (error) {
-      console.error('Gemini AI Error:', error);
-      return { 
-        text: '',
-        error: error instanceof Error ? error.message : 'Failed to generate content'
-      };
+      console.error('Error generating post:', error);
+      return { text: '', error: 'Failed to generate content' };
     }
   },
 
-  async analyzeImage(imageFile: File): Promise<GeminiResponse> {
+  async analyzeImage(image: File, model: string = 'gemini-1.5-pro-vision') {
     try {
-      const model = genAI.getGenerativeModel({ model: 'gemini-pro-vision' });
+      const modelInstance = genAI.getGenerativeModel({ model });
       
-      // Convert image to base64
+      // Convert File to base64
       const base64Image = await new Promise<string>((resolve) => {
         const reader = new FileReader();
         reader.onloadend = () => {
           const base64 = reader.result as string;
           resolve(base64.split(',')[1]);
         };
-        reader.readAsDataURL(imageFile);
+        reader.readAsDataURL(image);
       });
 
-      const prompt = `Analyze this image and suggest:
-1. A relevant caption
-2. Appropriate hashtags
-3. Best platform to post (Twitter, LinkedIn, or Instagram)
-4. Any improvements or edits needed
+      const prompt = `Analyze this image for social media posting:
 
-Please provide a detailed analysis.`;
+1. Provide a detailed description of the image
+2. Suggest an engaging caption
+3. Recommend relevant hashtags
+4. Identify the best platform(s) for posting (Twitter, LinkedIn, Instagram)
+5. Suggest any improvements or edits needed
 
-      const result = await model.generateContent([
+Format the response in a clear, structured way.`;
+
+      const result = await modelInstance.generateContent([
         prompt,
         {
           inlineData: {
-            mimeType: imageFile.type,
+            mimeType: image.type,
             data: base64Image
           }
         }
       ]);
-
       const response = await result.response;
       const text = response.text();
-
-      return { text };
+      
+      return { text, error: null };
     } catch (error) {
-      console.error('Gemini AI Image Analysis Error:', error);
-      return { 
-        text: '',
-        error: error instanceof Error ? error.message : 'Failed to analyze image'
-      };
+      console.error('Error analyzing image:', error);
+      return { text: '', error: 'Failed to analyze image' };
     }
   }
 }; 

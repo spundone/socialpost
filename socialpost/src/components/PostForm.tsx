@@ -18,7 +18,11 @@ import { PostContent, SocialMediaAccount, FormattedPost } from '../types';
 import { formatContent } from '../utils/formatUtils';
 import { geminiService } from '../services/geminiService';
 
-const PostForm: React.FC = () => {
+interface PostFormProps {
+    selectedModel: string;
+}
+
+const PostForm: React.FC<PostFormProps> = ({ selectedModel }) => {
     const [content, setContent] = useState<PostContent>({
         image: null,
         caption: '',
@@ -39,7 +43,7 @@ const PostForm: React.FC = () => {
         setIsGenerating(true);
         setAiError('');
         try {
-            const response = await geminiService.analyzeImage(file);
+            const response = await geminiService.analyzeImage(file, selectedModel);
             if (response.error) {
                 setAiError(response.error);
             } else {
@@ -115,7 +119,7 @@ const PostForm: React.FC = () => {
         setIsGenerating(true);
         setAiError('');
         try {
-            const response = await geminiService.generatePost(content.caption, platform);
+            const response = await geminiService.generatePost(content.caption, platform, selectedModel);
             if (response.error) {
                 setAiError(response.error);
             } else {
